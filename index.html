@@ -56,7 +56,7 @@
     gap: 18px;
     flex-wrap: wrap;
   }
-  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand { flex: 1; display: flex; align-items: center; gap: 12px; }
   .brand-mark {
     width: 52px; height: 52px; border-radius: 16px;
     background: linear-gradient(150deg, var(--night2), var(--night));
@@ -84,7 +84,7 @@
   .brand-text.no-eyebrow .brand-title { margin-top: 0; }
 
   .weeknav {
-    margin: 0 auto;
+    flex: none; margin: 0;
     display: flex; align-items: center; gap: 8px;
     background: var(--surface); border-radius: 999px;
     padding: 7px 9px; box-shadow: var(--shadow);
@@ -102,7 +102,7 @@
   .weekrange { font-family: var(--display); font-weight: 600; font-size: 21px; color: var(--ink); line-height: 1.1; }
   .weeknote { font-size: 12.5px; color: var(--muted); font-weight: 700; margin-top: 1px; }
 
-  .top-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .top-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
   .today-btn {
     border: none; background: var(--night); color: #fff;
     font-weight: 700; font-size: 15px; padding: 11px 18px; border-radius: 999px;

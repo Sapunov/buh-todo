@@ -7,6 +7,7 @@
     const partsRef = React.useRef([]);
     const rafRef = React.useRef(0);
     const runningRef = React.useRef(false);
+    const lastRef = React.useRef(0);
 
     const resize = React.useCallback(() => {
       const cv = canvasRef.current;
@@ -38,20 +39,30 @@
       ctx.fill();
     };
 
-    const tick = React.useCallback(() => {
+    const tick = React.useCallback((now) => {
       const cv = canvasRef.current;
       if (!cv) return;
       const ctx = cv.getContext('2d');
+      // Шаг по времени, нормализованный к 60 fps. Это делает анимацию
+      // независимой от частоты кадров: на 120 Гц не ускоряется, при
+      // просадке кадров не «дёргается». f — сколько «эталонных» кадров
+      // прошло с прошлого тика.
+      const last = lastRef.current || now;
+      lastRef.current = now;
+      let f = ((now - last) / 1000) * 60;
+      if (!(f > 0)) f = 1;          // первый кадр / некорректный timestamp
+      if (f > 2.5) f = 2.5;         // после лага или возврата вкладки — не телепортируем
       ctx.clearRect(0, 0, cv.width, cv.height);
       const ps = partsRef.current;
+      const fr = Math.pow(0.985, f); // трение за прошедшее время
       for (let i = ps.length - 1; i >= 0; i--) {
         const p = ps[i];
-        p.life += 1;
-        p.vy += p.g;
-        p.vx *= 0.99;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.rot += p.vr;
+        p.life += f;
+        p.vy += p.g * f;
+        p.vx *= fr;
+        p.x += p.vx * f;
+        p.y += p.vy * f;
+        p.rot += p.vr * f;
         const t = p.life / p.max;
         const alpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
         ctx.globalAlpha = Math.max(0, alpha);
@@ -82,6 +93,7 @@
     const ensure = React.useCallback(() => {
       if (!runningRef.current) {
         runningRef.current = true;
+        lastRef.current = 0; // первый кадр получит f = 1, без скачка по dt
         rafRef.current = requestAnimationFrame(tick);
       }
     }, [tick]);
@@ -95,7 +107,7 @@
       const n = 30;
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2 + Math.random() * 0.2;
-        const sp = 6 + Math.random() * 6;
+        const sp = 5 + Math.random() * 5;
         ps.push({
           x, y,
           vx: Math.cos(a) * sp,
