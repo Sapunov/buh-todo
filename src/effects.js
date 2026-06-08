@@ -75,6 +75,15 @@
           ctx.rotate(p.rot);
           ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.5);
           ctx.restore();
+        } else if (p.shape === 'emoji') {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.font = p.size + 'px serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(p.char, 0, 0);
+          ctx.restore();
         } else {
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size, 0, 7);
@@ -149,6 +158,63 @@
       ensure();
     }, [ensure]);
 
+    // Фонтанчик эмодзи у клетки — небольшой, вверх с лёгким разлётом.
+    const emojiBurst = React.useCallback((x, y, opts = {}) => {
+      const list = opts.emojis && opts.emojis.length ? opts.emojis : ['🎉', '⭐', '✨'];
+      const ps = partsRef.current;
+      const n = opts.count || 10;
+      for (let i = 0; i < n; i++) {
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.1; // в основном вверх
+        const sp = 3.5 + Math.random() * 3.5;
+        ps.push({
+          x: x + (Math.random() - 0.5) * 14, y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1.5,
+          g: 0.18, size: 18 + Math.random() * 12,
+          char: list[(Math.random() * list.length) | 0],
+          color: '#000', shape: 'emoji',
+          life: 0, max: 34 + Math.random() * 16,
+          rot: (Math.random() - 0.5) * 0.5, vr: (Math.random() - 0.5) * 0.18,
+        });
+      }
+      ensure();
+    }, [ensure]);
+
+    // Полноэкранный фонтан эмодзи — несколько форсунок снизу + лёгкий дождь сверху.
+    const emojiFountain = React.useCallback((emojis) => {
+      const list = emojis && emojis.length ? emojis : ['🎉', '⭐', '🚀', '🌟', '✨'];
+      const ps = partsRef.current;
+      const W = window.innerWidth, H = window.innerHeight;
+      const jets = 5;
+      for (let j = 0; j < jets; j++) {
+        const jx = (W * (j + 0.5)) / jets;
+        for (let i = 0; i < 10; i++) {
+          const a = -Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+          const sp = 11 + Math.random() * 7; // мощный взлёт
+          ps.push({
+            x: jx + (Math.random() - 0.5) * 40, y: H + 10,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+            g: 0.22, size: 22 + Math.random() * 16,
+            char: list[(Math.random() * list.length) | 0],
+            color: '#000', shape: 'emoji',
+            life: 0, max: 90 + Math.random() * 40,
+            rot: (Math.random() - 0.5) * 0.6, vr: (Math.random() - 0.5) * 0.22,
+          });
+        }
+      }
+      for (let i = 0; i < 24; i++) {
+        ps.push({
+          x: Math.random() * W, y: -20 - Math.random() * 80,
+          vx: (Math.random() - 0.5) * 1.5, vy: 2 + Math.random() * 2.5,
+          g: 0.12, size: 20 + Math.random() * 14,
+          char: list[(Math.random() * list.length) | 0],
+          color: '#000', shape: 'emoji',
+          life: 0, max: 80 + Math.random() * 40,
+          rot: (Math.random() - 0.5) * 0.4, vr: (Math.random() - 0.5) * 0.15,
+        });
+      }
+      ensure();
+    }, [ensure]);
+
     React.useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
     const Canvas = React.useCallback(
@@ -161,7 +227,7 @@
       []
     );
 
-    return { Canvas, burst };
+    return { Canvas, burst, emojiBurst, emojiFountain };
   }
 
   Object.assign(window, { useFireworks, FX_PALETTE: PALETTE });

@@ -25,6 +25,19 @@
   const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   const uid = () => Math.random().toString(36).slice(2, 9);
 
+  const EMOJI_FALLBACK = ['🎉', '⭐', '🚀', '🌟', '✨', '🎈', '🍭', '🦄', '🌈', '💫'];
+  const parseEmojis = (str) => {
+    if (!str || !str.trim()) return EMOJI_FALLBACK;
+    try {
+      const seg = new Intl.Segmenter('ru', { granularity: 'grapheme' });
+      const out = [...seg.segment(str.trim())].map((s) => s.segment.trim()).filter(Boolean);
+      return out.length ? out : EMOJI_FALLBACK;
+    } catch (e) {
+      const out = Array.from(str.trim()).filter((c) => c.trim());
+      return out.length ? out : EMOJI_FALLBACK;
+    }
+  };
+
   function isDayComplete(week, day) {
     if (!week || !week.rituals.length) return false;
     return week.rituals.every((r) => week.done[r.id] && week.done[r.id][day]);
@@ -76,54 +89,37 @@
     const today = startOfDay(new Date());
     const [weekStart, setWeekStart] = useState(() => getMonday(today));
     const [store, setStore] = useState(() => load(STORE_KEY, { weeks: {} }));
-    const [settings, setSettings] = useState(() => ({ fireworks: true, sound: false, big: false, logo: 'rocket', eyebrow: 'космодром', title: 'Ваня', ...load(SET_KEY, {}) }));
+    const [settings, setSettings] = useState(() => ({ fireworks: true, sound: false, big: false, logo: 'rocket', eyebrow: 'космодром', title: 'Ваня', emojis: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', ...load(SET_KEY, {}) }));
     const [editor, setEditor] = useState(null); // {mode, id, initial}
     const [showSet, setShowSet] = useState(false);
     const gridRef = useRef(null);
-    const { Canvas, burst } = window.useFireworks();
+    const { Canvas, emojiBurst, emojiFountain } = window.useFireworks();
+    const emojiList = parseEmojis(settings.emojis);
 
     const key = keyOf(weekStart);
     useEffect(() => { save(STORE_KEY, store); }, [store]);
     useEffect(() => { save(SET_KEY, settings); }, [settings]);
 
-    // создать неделю (с переносом дел из ближайшей настроенной недели)
-    useEffect(() => {
-      if (store.weeks[key]) return;
-      setStore((s) => {
-        if (s.weeks[key]) return s;
-        const configured = Object.keys(s.weeks).filter((k) => s.weeks[k].rituals.length);
-        let seed = [];
-        if (configured.length) {
-          configured.sort();
-          const prevKeys = configured.filter((k) => k <= key);
-          const best = prevKeys.length ? prevKeys[prevKeys.length - 1] : configured[0];
-          seed = s.weeks[best].rituals.map((r) => ({ ...r }));
-        }
-        return { ...s, weeks: { ...s.weeks, [key]: { rituals: seed, done: {} } } };
-      });
-    }, [key, store.weeks]);
-
+    // Недели стартуют пустыми — материализуются при первом действии
+    // (saveRitual / toggle пишут s.weeks[key]). Авто-переноса дел нет:
+    // в пустой неделе показываем кнопку «предзаполнить с прошлой недели».
     const week = store.weeks[key] || { rituals: [], done: {} };
+    const prevKey = keyOf(addDays(weekStart, -7));
+    const prevWeek = store.weeks[prevKey];
+    const canPrefill = week.rituals.length === 0 && prevWeek && prevWeek.rituals.length > 0;
     const todayIndex = (() => {
       const diff = Math.round((today - weekStart) / 86400000);
       return diff >= 0 && diff <= 6 ? diff : -1;
     })();
 
-    const celebrate = useCallback((day) => {
+    const celebrate = useCallback(() => {
       if (settings.sound) playFanfare();
       if (!settings.fireworks) return;
-      const grid = gridRef.current; if (!grid) return;
-      const el = grid.querySelector('[data-col="' + day + '"]');
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + Math.min(120, r.height * 0.32);
-      requestAnimationFrame(() => burst(cx, cy, { colWidth: r.width }));
-      setTimeout(() => burst(cx - r.width * 0.22, cy - 18, { colWidth: r.width }), 130);
-      setTimeout(() => burst(cx + r.width * 0.22, cy - 6, { colWidth: r.width }), 260);
-    }, [settings, burst]);
+      emojiFountain(emojiList);
+    }, [settings, emojiFountain, emojiList]);
 
-    const toggle = (rid, day) => {
+    const toggle = (rid, day, ev) => {
+      const cellRect = ev && ev.currentTarget ? ev.currentTarget.getBoundingClientRect() : null;
       setStore((s) => {
         const w = s.weeks[key] || { rituals: [], done: {} };
         const before = isDayComplete(w, day);
@@ -132,18 +128,33 @@
         const ndone = { ...w.done, [rid]: { ...dprev } };
         if (ndone[rid][day]) delete ndone[rid][day]; else ndone[rid][day] = true;
         const nweek = { ...w, done: ndone };
+        const completes = !before && isDayComplete(nweek, day);
         if (becoming && settings.sound) playDing();
-        if (!before && isDayComplete(nweek, day)) requestAnimationFrame(() => celebrate(day));
+        // фонтанчик у клетки при отметке — но не на тапе, завершающем день (там полноэкранный)
+        if (becoming && settings.fireworks && cellRect && !completes) {
+          const cx = cellRect.left + cellRect.width / 2;
+          const cy = cellRect.top + cellRect.height * 0.4;
+          requestAnimationFrame(() => emojiBurst(cx, cy, { emojis: emojiList }));
+        }
+        if (completes) requestAnimationFrame(() => celebrate());
         return { ...s, weeks: { ...s.weeks, [key]: nweek } };
       });
     };
 
-    const saveRitual = ({ name, color, icon }) => {
+    const saveRitual = ({ name, color, icon, pos }) => {
       setStore((s) => {
         const w = s.weeks[key] || { rituals: [], done: {} };
         let rituals;
         if (editor.mode === 'edit') {
           rituals = w.rituals.map((r) => (r.id === editor.id ? { ...r, name, color, icon } : r));
+          if (typeof pos === 'number') {
+            const from = rituals.findIndex((r) => r.id === editor.id);
+            const clamped = Math.max(0, Math.min(rituals.length - 1, pos));
+            if (from !== -1 && clamped !== from) {
+              const [moved] = rituals.splice(from, 1);
+              rituals.splice(clamped, 0, moved);
+            }
+          }
         } else {
           rituals = [...w.rituals, { id: uid(), name, color, icon }];
         }
@@ -163,6 +174,16 @@
     const clearWeek = () => {
       setStore((s) => ({ ...s, weeks: { ...s.weeks, [key]: { ...s.weeks[key], done: {} } } }));
       setShowSet(false);
+    };
+    const prefillFromPrev = () => {
+      setStore((s) => {
+        const w = s.weeks[key] || { rituals: [], done: {} };
+        if (w.rituals.length) return s;
+        const src = s.weeks[prevKey];
+        if (!src || !src.rituals.length) return s;
+        const rituals = src.rituals.map((r) => ({ id: uid(), name: r.name, color: r.color, icon: r.icon }));
+        return { ...s, weeks: { ...s.weeks, [key]: { rituals, done: {} } } };
+      });
     };
 
     const isThisWeek = keyOf(getMonday(today)) === key;
@@ -204,7 +225,7 @@
       rows.push(React.createElement('button', {
         key: 'lbl' + r.id, type: 'button', className: 'rlabel',
         style: { gridColumn: 1, gridRow: gr },
-        onClick: () => setEditor({ mode: 'edit', id: r.id, initial: r }),
+        onClick: () => setEditor({ mode: 'edit', id: r.id, initial: r, index: ri, count: week.rituals.length }),
       }, [
         React.createElement('span', { key: 'chip', className: 'rchip', style: { background: r.color } },
           React.createElement(window.StickerIcon, { name: r.icon, s: 22, c: '#fff' })),
@@ -215,7 +236,7 @@
         const done = !!(week.done[r.id] && week.done[r.id][d]);
         rows.push(React.createElement(Cell, {
           key: r.id + '-' + d, done, color: r.color, icon: r.icon, gridColumn: d + 2, gridRow: gr,
-          label: r.name + ', ' + WD[d], onToggle: () => toggle(r.id, d),
+          label: r.name + ', ' + WD[d], onToggle: (e) => toggle(r.id, d, e),
         }));
       }
     });
@@ -271,6 +292,15 @@
                   React.createElement(window.StickerIcon, { name: 'planet', s: 46, c: '#b9b5c6' })),
                 React.createElement('div', { className: 'empty-title', key: 't' }, 'Пока пусто'),
                 React.createElement('div', { className: 'empty-sub', key: 's' }, 'Добавь первое дело — например «промыть нос»'),
+                canPrefill
+                  ? React.createElement('button', {
+                      key: 'prefill', type: 'button', className: 'addbtn', style: { marginTop: 14 },
+                      onClick: prefillFromPrev,
+                    }, [
+                      React.createElement('span', { key: 'p', className: 'addplus' }, '↺'),
+                      React.createElement('span', { key: 't' }, 'Предзаполнить с прошлой недели'),
+                    ])
+                  : null,
               ])
             : null,
         ])
@@ -288,6 +318,7 @@
 
       React.createElement(window.RitualEditor, {
         key: 'ed', open: !!editor, mode: editor?.mode, initial: editor?.initial,
+        index: editor?.index, count: editor?.count,
         onSave: saveRitual, onDelete: deleteRitual, onClose: () => setEditor(null),
       }),
       React.createElement(window.SettingsSheet, {

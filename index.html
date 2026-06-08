@@ -27,7 +27,7 @@
   .app.big { --cell-h: 100px; --cell-gap: 11px; }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; min-height: 100%; }
   body {
     font-family: var(--font);
     color: var(--ink);
@@ -35,11 +35,11 @@
     overscroll-behavior: none;
     -webkit-font-smoothing: antialiased;
   }
-  #root { height: 100%; }
+  #root { min-height: 100%; }
   button { font-family: inherit; cursor: pointer; }
 
   .app {
-    height: 100%;
+    min-height: 100%;
     display: flex;
     flex-direction: column;
     padding: clamp(12px, 2.2vw, 26px);
@@ -124,7 +124,7 @@
   .iconbtn:active { transform: scale(.9) rotate(40deg); }
 
   /* ---------- доска ---------- */
-  .board { flex: 1; min-height: 0; overflow: auto; padding: 18px 8px 8px; }
+  .board { padding: 18px 8px 8px; }
   .grid {
     display: grid;
     gap: var(--cell-gap);
@@ -155,9 +155,10 @@
   }
 
   /* шапка дней */
-  .corner { grid-column: 1; }
+  .corner { grid-column: 1; position: sticky; top: 0; z-index: 5; background: var(--bg); }
   .wd {
-    z-index: 1; text-align: center; padding: 4px 0 8px;
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    text-align: center; padding: 8px 0 8px;
     display: flex; flex-direction: column; align-items: center; gap: 3px;
   }
   .wd-name { font-weight: 800; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; transition: color .25s ease; }
@@ -168,6 +169,10 @@
     transition: background .25s ease, color .25s ease, box-shadow .25s ease;
   }
   .wd-num { line-height: 1; }
+  /* непрозрачная шапка перекрывала подсветку колонки .colhi.today, оставляя
+     лишь её края — выглядело как тень. Кладём ту же подсветку поверх --bg, чтобы
+     шапка осталась непрозрачной (для sticky), но слилась с колонкой без ободка. */
+  .wd.today { background: linear-gradient(rgba(58, 63, 134, 0.06), rgba(58, 63, 134, 0.06)), var(--bg); }
   .wd.today .wd-name { color: var(--night2); }
   .wd.today .wd-date { background: var(--night); color: #fff; }
 
@@ -330,6 +335,14 @@
     transition: transform .12s ease, border-color .2s ease;
   }
   .icon-pick:active { transform: scale(.9); }
+  .pos-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pos-btn {
+    width: 44px; height: 44px; border-radius: 14px; border: 2.5px solid var(--line);
+    background: var(--surface); font-weight: 800; font-size: 17px; color: var(--ink);
+    transition: transform .12s ease, border-color .2s ease, background .2s ease;
+  }
+  .pos-btn:active { transform: scale(.9); }
+  .pos-btn.on { border-color: var(--night2); background: #F1EEFA; color: var(--night2); }
 
   .editor-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 26px; gap: 12px; }
   .editor-actions-right { display: flex; gap: 10px; margin-left: auto; }

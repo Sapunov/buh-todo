@@ -25,10 +25,11 @@
     );
   }
 
-  function RitualEditor({ open, mode, initial, onSave, onDelete, onClose }) {
+  function RitualEditor({ open, mode, initial, index, count, onSave, onDelete, onClose }) {
     const [name, setName] = React.useState('');
     const [color, setColor] = React.useState(ROW_PALETTE[0].c);
     const [icon, setIcon] = React.useState('star');
+    const [pos, setPos] = React.useState(0);
     const inputRef = React.useRef(null);
 
     React.useEffect(() => {
@@ -36,9 +37,10 @@
         setName(initial?.name || '');
         setColor(initial?.color || ROW_PALETTE[0].c);
         setIcon(initial?.icon || 'star');
+        setPos(typeof index === 'number' ? index : 0);
         setTimeout(() => inputRef.current && inputRef.current.focus(), 280);
       }
-    }, [open, initial]);
+    }, [open, initial, index]);
 
     const save = () => {
       const n = name.trim();
@@ -46,7 +48,7 @@
         inputRef.current && inputRef.current.focus();
         return;
       }
-      onSave({ name: n, color, icon });
+      onSave({ name: n, color, icon, pos });
     };
 
     return React.createElement(
@@ -92,6 +94,18 @@
             }, React.createElement(window.StickerIcon, { name, s: 26, c: icon === name ? '#fff' : '#6f6c7d' }))
           )
         ),
+
+        mode === 'edit' && count > 1
+          ? React.createElement('div', { className: 'editor-label', key: 'posl' }, 'Порядок в списке')
+          : null,
+        mode === 'edit' && count > 1
+          ? React.createElement('div', { className: 'pos-row', key: 'posr' },
+              Array.from({ length: count }, (_, i) =>
+                React.createElement('button', {
+                  key: i, type: 'button', className: 'pos-btn' + (pos === i ? ' on' : ''),
+                  onClick: () => setPos(i), 'aria-label': 'позиция ' + (i + 1),
+                }, String(i + 1))))
+          : null,
 
         React.createElement('div', { className: 'editor-actions', key: 'act' }, [
           mode === 'edit'
@@ -166,9 +180,16 @@
           onChange: (e) => set('title', e.target.value), maxLength: 24,
         }),
 
+        React.createElement('div', { className: 'editor-label', key: 'eml' }, 'Эмодзи для салюта'),
+        React.createElement('input', {
+          key: 'emi', className: 'editor-input', value: settings.emojis ?? '',
+          placeholder: '🎉⭐🚀🌟✨',
+          onChange: (e) => set('emojis', e.target.value), maxLength: 80,
+        }),
+
         React.createElement('div', { className: 'set-divider', key: 'dv' }),
 
-        Row('fireworks', 'Салют за полный день', 'когда все дела сделаны', 'r1'),
+        Row('fireworks', 'Включить эффекты завершения', 'фонтан эмодзи при отметке и завершении дня', 'r1'),
         Row('sound', 'Звуки', 'тихий «дзынь» при отметке', 'r2'),
         Row('big', 'Крупные клетки', 'удобнее маленьким пальчикам', 'r3'),
         React.createElement('button', {
