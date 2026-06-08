@@ -89,12 +89,13 @@
     const today = startOfDay(new Date());
     const [weekStart, setWeekStart] = useState(() => getMonday(today));
     const [store, setStore] = useState(() => load(STORE_KEY, { weeks: {} }));
-    const [settings, setSettings] = useState(() => ({ fireworks: true, sound: false, big: false, logo: 'rocket', eyebrow: 'космодром', title: 'Ваня', emojis: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', ...load(SET_KEY, {}) }));
+    const [settings, setSettings] = useState(() => ({ fireworks: true, sound: false, big: false, logo: 'rocket', eyebrow: 'космодром', title: 'Ваня', emojis: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', emojisTask: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', emojisDay: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', ...load(SET_KEY, {}) }));
     const [editor, setEditor] = useState(null); // {mode, id, initial}
     const [showSet, setShowSet] = useState(false);
     const gridRef = useRef(null);
     const { Canvas, emojiBurst, emojiFountain } = window.useFireworks();
-    const emojiList = parseEmojis(settings.emojis);
+    const emojiTaskList = parseEmojis(settings.emojisTask ?? settings.emojis);
+    const emojiDayList = parseEmojis(settings.emojisDay ?? settings.emojis);
 
     const key = keyOf(weekStart);
     useEffect(() => { save(STORE_KEY, store); }, [store]);
@@ -115,8 +116,8 @@
     const celebrate = useCallback(() => {
       if (settings.sound) playFanfare();
       if (!settings.fireworks) return;
-      emojiFountain(emojiList);
-    }, [settings, emojiFountain, emojiList]);
+      emojiFountain(emojiDayList);
+    }, [settings, emojiFountain, emojiDayList]);
 
     const toggle = (rid, day, ev) => {
       const cellRect = ev && ev.currentTarget ? ev.currentTarget.getBoundingClientRect() : null;
@@ -134,7 +135,7 @@
         if (becoming && settings.fireworks && cellRect && !completes) {
           const cx = cellRect.left + cellRect.width / 2;
           const cy = cellRect.top + cellRect.height * 0.4;
-          requestAnimationFrame(() => emojiBurst(cx, cy, { emojis: emojiList }));
+          requestAnimationFrame(() => emojiBurst(cx, cy, { emojis: emojiTaskList }));
         }
         if (completes) requestAnimationFrame(() => celebrate());
         return { ...s, weeks: { ...s.weeks, [key]: nweek } };
@@ -206,12 +207,23 @@
     for (let d = 0; d < 7; d++) {
       const date = addDays(weekStart, d);
       const complete = isDayComplete(week, d);
+      const count = dayCount(week, d);
+      const total = week.rituals.length;
+      const showRing = count > 0 && !complete;
+      const R = 18, C = 2 * Math.PI * R;
       headerCells.push(React.createElement('div', {
         key: 'wd' + d, className: 'wd' + (d === todayIndex ? ' today' : '') + (complete ? ' done' : ''),
         style: { gridColumn: d + 2, gridRow: 1 },
       }, [
         React.createElement('span', { key: 'n', className: 'wd-name' }, complete ? 'ГОТОВО' : WD[d]),
         React.createElement('span', { key: 'd', className: 'wd-date' }, [
+          showRing ? React.createElement('svg', { key: 'ring', className: 'wd-ring', viewBox: '0 0 44 44' }, [
+            React.createElement('circle', { key: 't', className: 'wd-ring-track', cx: 22, cy: 22, r: R }),
+            React.createElement('circle', {
+              key: 'b', className: 'wd-ring-bar', cx: 22, cy: 22, r: R,
+              style: { strokeDasharray: C, strokeDashoffset: C * (1 - count / total) },
+            }),
+          ]) : null,
           React.createElement('span', { key: 'num', className: 'wd-num' }, date.getDate()),
           complete ? React.createElement('span', { key: 'st', className: 'wd-badge' },
             React.createElement(window.StickerIcon, { name: 'star', s: 16, c: '#fff' })) : null,

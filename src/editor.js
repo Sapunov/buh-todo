@@ -180,11 +180,18 @@
           onChange: (e) => set('title', e.target.value), maxLength: 24,
         }),
 
-        React.createElement('div', { className: 'editor-label', key: 'eml' }, 'Эмодзи для салюта'),
+        React.createElement('div', { className: 'editor-label', key: 'emtl' }, 'Эмодзи за одно дело'),
         React.createElement('input', {
-          key: 'emi', className: 'editor-input', value: settings.emojis ?? '',
+          key: 'emt', className: 'editor-input', value: settings.emojisTask ?? settings.emojis ?? '',
           placeholder: '🎉⭐🚀🌟✨',
-          onChange: (e) => set('emojis', e.target.value), maxLength: 80,
+          onChange: (e) => set('emojisTask', e.target.value), maxLength: 80,
+        }),
+
+        React.createElement('div', { className: 'editor-label', key: 'emdl' }, 'Эмодзи за все дела дня'),
+        React.createElement('input', {
+          key: 'emd', className: 'editor-input', value: settings.emojisDay ?? settings.emojis ?? '',
+          placeholder: '🎉⭐🚀🌟✨',
+          onChange: (e) => set('emojisDay', e.target.value), maxLength: 80,
         }),
 
         React.createElement('div', { className: 'set-divider', key: 'dv' }),
