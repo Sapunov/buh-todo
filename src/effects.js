@@ -8,6 +8,7 @@
     const rafRef = React.useRef(0);
     const runningRef = React.useRef(false);
     const lastRef = React.useRef(0);
+    const fountainTimerRef = React.useRef(0);
 
     const resize = React.useCallback(() => {
       const cv = canvasRef.current;
@@ -179,9 +180,8 @@
       ensure();
     }, [ensure]);
 
-    // Полноэкранный фонтан эмодзи — несколько форсунок снизу + лёгкий дождь сверху.
-    const emojiFountain = React.useCallback((emojis) => {
-      const list = emojis && emojis.length ? emojis : ['🎉', '⭐', '🚀', '🌟', '✨'];
+    // Одна «волна» фонтана: несколько форсунок снизу + лёгкий дождь сверху.
+    const fountainWave = React.useCallback((list) => {
       const ps = partsRef.current;
       const W = window.innerWidth, H = window.innerHeight;
       const jets = 5;
@@ -215,7 +215,34 @@
       ensure();
     }, [ensure]);
 
-    React.useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+    // Полноэкранный фонтан эмодзи. opts.durationSec — сколько секунд подряд
+    // выбрасывать новые волны (по умолчанию 0 — одна волна, как раньше).
+    const emojiFountain = React.useCallback((emojis, opts = {}) => {
+      const list = emojis && emojis.length ? emojis : ['🎉', '⭐', '🚀', '🌟', '✨'];
+      if (fountainTimerRef.current) {
+        clearInterval(fountainTimerRef.current);
+        fountainTimerRef.current = 0;
+      }
+      fountainWave(list); // первая волна сразу
+      const durationMs = Math.max(0, Number(opts.durationSec) || 0) * 1000;
+      if (durationMs > 0) {
+        const period = 450; // новая волна каждые ~0.45 c
+        let elapsed = 0;
+        fountainTimerRef.current = setInterval(() => {
+          elapsed += period;
+          fountainWave(list);
+          if (elapsed >= durationMs) {
+            clearInterval(fountainTimerRef.current);
+            fountainTimerRef.current = 0;
+          }
+        }, period);
+      }
+    }, [fountainWave]);
+
+    React.useEffect(() => () => {
+      cancelAnimationFrame(rafRef.current);
+      if (fountainTimerRef.current) clearInterval(fountainTimerRef.current);
+    }, []);
 
     const Canvas = React.useCallback(
       (props) =>

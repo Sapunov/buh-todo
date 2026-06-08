@@ -197,6 +197,17 @@
         React.createElement('div', { className: 'set-divider', key: 'dv' }),
 
         Row('fireworks', 'Включить эффекты завершения', 'фонтан эмодзи при отметке и завершении дня', 'r1'),
+
+        React.createElement('div', { className: 'editor-label', key: 'dfl' }, 'Длительность салюта в конце дня, сек'),
+        React.createElement('input', {
+          key: 'dfs', className: 'editor-input', type: 'number', min: 0, max: 30, step: 1,
+          value: settings.dayFountainSec ?? 4,
+          onChange: (e) => {
+            const n = Math.max(0, Math.min(30, Math.round(Number(e.target.value) || 0)));
+            set('dayFountainSec', n);
+          },
+        }),
+
         Row('sound', 'Звуки', 'тихий «дзынь» при отметке', 'r2'),
         Row('big', 'Крупные клетки', 'удобнее маленьким пальчикам', 'r3'),
         React.createElement('button', {

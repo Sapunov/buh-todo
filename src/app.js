@@ -89,7 +89,7 @@
     const today = startOfDay(new Date());
     const [weekStart, setWeekStart] = useState(() => getMonday(today));
     const [store, setStore] = useState(() => load(STORE_KEY, { weeks: {} }));
-    const [settings, setSettings] = useState(() => ({ fireworks: true, sound: false, big: false, logo: 'rocket', eyebrow: 'космодром', title: 'Ваня', emojis: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', emojisTask: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', emojisDay: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', ...load(SET_KEY, {}) }));
+    const [settings, setSettings] = useState(() => ({ fireworks: true, sound: false, big: false, logo: 'rocket', eyebrow: 'космодром', title: 'Ваня', emojis: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', emojisTask: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', emojisDay: '🎉⭐🚀🌟✨🎈🍭🦄🌈💫', dayFountainSec: 4, ...load(SET_KEY, {}) }));
     const [editor, setEditor] = useState(null); // {mode, id, initial}
     const [showSet, setShowSet] = useState(false);
     const gridRef = useRef(null);
@@ -116,7 +116,7 @@
     const celebrate = useCallback(() => {
       if (settings.sound) playFanfare();
       if (!settings.fireworks) return;
-      emojiFountain(emojiDayList);
+      emojiFountain(emojiDayList, { durationSec: settings.dayFountainSec ?? 4 });
     }, [settings, emojiFountain, emojiDayList]);
 
     const toggle = (rid, day, ev) => {
