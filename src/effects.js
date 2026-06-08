@@ -9,6 +9,33 @@
     const runningRef = React.useRef(false);
     const lastRef = React.useRef(0);
     const fountainTimerRef = React.useRef(0);
+    const emojiCacheRef = React.useRef(new Map());
+
+    // Каждый эмодзи рендерится в офскрин-спрайт один раз. В цикле отрисовки
+    // используем дешёвый drawImage вместо тяжёлого fillText цветного глифа.
+    const getEmojiSprite = React.useCallback((char) => {
+      const cache = emojiCacheRef.current;
+      let spr = cache.get(char);
+      if (spr) return spr;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const BASE = 64;   // размер глифа в спрайте (чёткость при ужатии)
+      const PAD = 1.25;  // запас по краям, чтобы глиф не обрезался
+      const box = BASE * PAD;
+      const cv = document.createElement('canvas');
+      cv.width = box * dpr;
+      cv.height = box * dpr;
+      const c = cv.getContext('2d');
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.font = BASE + 'px serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(char, box / 2, box / 2);
+      // pad: во сколько раз бокс спрайта больше высоты глифа. При отрисовке
+      // бокс масштабируется до p.size * pad, тогда сам глиф выходит ≈ p.size.
+      spr = { canvas: cv, pad: PAD };
+      cache.set(char, spr);
+      return spr;
+    }, []);
 
     const resize = React.useCallback(() => {
       const cv = canvasRef.current;
@@ -77,13 +104,12 @@
           ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.5);
           ctx.restore();
         } else if (p.shape === 'emoji') {
+          const spr = getEmojiSprite(p.char);
+          const d = p.size * spr.pad; // бокс спрайта; глиф внутри ≈ p.size
           ctx.save();
           ctx.translate(p.x, p.y);
           ctx.rotate(p.rot);
-          ctx.font = p.size + 'px serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(p.char, 0, 0);
+          ctx.drawImage(spr.canvas, -d / 2, -d / 2, d, d);
           ctx.restore();
         } else {
           ctx.beginPath();
